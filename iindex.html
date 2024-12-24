@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Resultados Lotomania</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+            padding: 20px;
+        }
+
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .input-section {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .result-info {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            text-align: left;
+        }
+
+        .numbers-display {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 15px 0;
+            flex-wrap: wrap;
+        }
+
+        .number-ball {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            background-color: #209869;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+        }
+
+        button {
+            padding: 8px 16px;
+            background-color: #209869;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px;
+        }
+
+        button:hover {
+            background-color: #1a7d57;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+
+        .numbers-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 5px;
+            margin-top: 20px;
+        }
+
+        .number {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #ccc;
+            border-radius: 50%;
+            background-color: white;
+            font-weight: bold;
+        }
+
+        .selected {
+            background-color: #209869;
+            color: white;
+            border-color: #209869;
+        }
+
+        .error {
+            color: red;
+            margin-top: 10px;
+        }
+
+        .loading {
+            display: none;
+            margin: 20px 0;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100px;
+            margin: 0 10px;
+        }
+
+        .prize-info {
+            margin-top: 15px;
+            padding: 10px;
+            background-color: #e6f4ed;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="input-section">
+            <h2>Resultados da Lotomania</h2>
+            <div>
+                <label>Concurso:</label>
+                <input type="number" id="concursoInput" placeholder="Nº do concurso">
+                <button onclick="buscarResultado()" id="searchButton">Buscar Resultado</button>
+            </div>
+            <div id="loading" class="loading">Buscando resultado...</div>
+            <div id="error" class="error"></div>
+        </div>
+
+        <div id="resultInfo" class="result-info" style="display: none;">
+            <h3>Resultado do Concurso <span id="concursoNumero"></span></h3>
+            <p>Data do sorteio: <span id="dataSorteio"></span></p>
+            <div class="numbers-display" id="numbersDisplay"></div>
+            <div class="prize-info">
+                <p>Prêmio: R$ <span id="premioValor"></span></p>
+                <p>Ganhadores: <span id="ganhadores"></span></p>
+            </div>
+        </div>
+
+        <div class="numbers-grid" id="grid">
+            <!-- Números serão gerados via JavaScript -->
+        </div>
+    </div>
+
+    <script>
+        // Gera a grade de números
+        function generateGrid() {
+            const grid = document.getElementById('grid');
+            for (let i = 0; i <= 99; i++) {
+                const numberDiv = document.createElement('div');
+                numberDiv.className = 'number';
+                numberDiv.textContent = i.toString().padStart(2, '0');
+                grid.appendChild(numberDiv);
+            }
+        }
+
+        // Formata o valor do prêmio
+        function formatPrize(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+
+        // Formata a data
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        // Busca o resultado na API
+        async function buscarResultado() {
+            const concursoInput = document.getElementById('concursoInput');
+            const concurso = concursoInput.value;
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const button = document.getElementById('searchButton');
+            const resultInfo = document.getElementById('resultInfo');
+
+            // Limpa estados anteriores
+            error.textContent = '';
+            loading.classList.add('active');
+            button.disabled = true;
+            resultInfo.style.display = 'none';
+
+            try {
+                const baseUrl = 'https://loteriascaixa-api.herokuapp.com/api';
+                const url = concurso 
+                    ? `${baseUrl}/lotomania/${concurso}` 
+                    : `${baseUrl}/lotomania/latest`;
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    throw new Error('Não foi possível encontrar o resultado deste concurso');
+                }
+
+                const data = await response.json();
+
+                document.getElementById('concursoNumero').textContent = data.concurso;
+                document.getElementById('dataSorteio').textContent = formatDate(data.data);
+                document.getElementById('premioValor').textContent = formatPrize(
+                    data.estimativa_premio || 0
+                );
+                document.getElementById('ganhadores').textContent = 
+                    data.premiacao?.[0]?.quantidade_ganhadores || 0;
+
+                const numbersDisplay = document.getElementById('numbersDisplay');
+                numbersDisplay.innerHTML = '';
+                const dezenas = data.dezenas || data.numeros;
+                dezenas.forEach(numero => {
+                    const ball = document.createElement('div');
+                    ball.className = 'number-ball';
+                    ball.textContent = numero.padStart(2, '0');
+                    numbersDisplay.appendChild(ball);
+                });
+
+                document.querySelectorAll('.number').forEach(num => {
+                    num.classList.remove('selected');
+                });
+                dezenas.forEach(numero => {
+                    const numberDiv = document.querySelector(`.number:nth-child(${parseInt(numero) + 1})`);
+                    if (numberDiv) {
+                        numberDiv.classList.add('selected');
+                    }
+                });
+
+                resultInfo.style.display = 'block';
+                if (!concursoInput.value) {
+                    concursoInput.value = data.concurso;
+                }
+
+            } catch (err) {
+                error.textContent = err.message || 'Erro ao buscar o resultado. Tente novamente.';
+            } finally {
+                loading.classList.remove('active');
+                button.disabled = false;
+            }
+        }
+
+        generateGrid();
+        buscarResultado();
+    </script>
+</body>
+</html>
